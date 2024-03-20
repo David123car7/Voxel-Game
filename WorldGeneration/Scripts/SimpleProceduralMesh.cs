@@ -7,6 +7,7 @@ using UnityEngine.UIElements;
 public class SimpleProceduralMesh : MonoBehaviour
 {
     private Mesh mesh;
+    private int amount = 2;
 
     void Start()
     {
@@ -15,20 +16,22 @@ public class SimpleProceduralMesh : MonoBehaviour
 
         CreatePlane();
     }
-
     void CreatePlane()
     {
-        mesh.vertices = new Vector3[]
-        {
-            new Vector3(0,0, 0),
-            new Vector3(0,0, 1),
-            new Vector3(1,0, 0),
-            new Vector3(1,0, 1),
-        };
+            mesh.vertices = new Vector3[]
+            {
+                new Vector3(0,0, 0),
+                new Vector3(0,0, 1),
+                new Vector3(1,0, 0),
+                new Vector3(1,0, 1),
+            };
 
-        mesh.triangles = new int[] {
-          0,1,2,
-          2,1,3
-        };
+            mesh.triangles = new int[] {
+              0,1,2,
+              2,1,3
+            };
+        
     }
+
+
 }
