@@ -2,19 +2,27 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
-using Unity.Jobs;
-using Unity.Burst;
 using UnityEngine.Rendering;
 using static UnityEngine.Mesh;
 using Unity.Mathematics;
 using static Unity.Mathematics.math;
+using Unity.VisualScripting;
+using System.Runtime.InteropServices;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))] //It creates those modifiers automatic 
-public class ProceduralMesh : MonoBehaviour
+public class ProceduralMeshNoJobs : MonoBehaviour
 {
     int vertexAttributeCount = 4;
     int vertexCount = 4;
     int triangleIndexCount = 6;
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct Vertex
+    {
+        public float3 position, normal;
+        public half4 tangent;
+        public half2 texCoord0;
+    };
 
     void Start()
     {
@@ -33,34 +41,43 @@ public class ProceduralMesh : MonoBehaviour
         );
         vertexAttributes[0] = new VertexAttributeDescriptor(dimension: 3);
         vertexAttributes[1] = new VertexAttributeDescriptor(
-            VertexAttribute.Normal, dimension: 3, stream: 1
+            VertexAttribute.Normal, dimension: 3
         );
         vertexAttributes[2] = new VertexAttributeDescriptor(
-        );
+             VertexAttribute.Tangent, VertexAttributeFormat.Float16, 4
+         );
         vertexAttributes[3] = new VertexAttributeDescriptor(
-            VertexAttribute.TexCoord0, dimension: 2, stream: 3
+            VertexAttribute.TexCoord0, VertexAttributeFormat.Float16, 2  
         );
         meshData.SetVertexBufferParams(vertexCount, vertexAttributes);
         vertexAttributes.Dispose();
 
         //Setting Vertices
-        NativeArray<float3> positions = meshData.GetVertexData<float3>();
-        positions[0] = 0f;
-        positions[1] = right();
-        positions[2] = up();
-        positions[3] = float3(1f, 1f, 0f);
+        NativeArray<Vertex> vertices = meshData.GetVertexData<Vertex>();
 
-        NativeArray<float3> normals = meshData.GetVertexData<float3>(1);
-        normals[0] = normals[1] = normals[2] = normals[3] = back();
+        half h0 = half(0f), h1 = half(1f);
 
-        NativeArray<float4> tangents = meshData.GetVertexData<float4>(2);
-        tangents[0] = tangents[1] = tangents[2] = tangents[3] = float4(1f, 0f, 0f, -1f);
+        var vertex = new Vertex
+        {
+            normal = back(),
+            tangent = half4(h1, h0, h0, half(-1f))
+        };
 
-        NativeArray<float2> texCoords = meshData.GetVertexData<float2>(3);
-        texCoords[0] = 0f;
-        texCoords[1] = float2(1f, 0f);
-        texCoords[2] = float2(0f, 1f);
-        texCoords[3] = 1f;
+        vertex.position = float3(0f, 0f, 0f);
+        vertex.texCoord0 = h0;
+        vertices[0] = vertex;
+
+        vertex.position = float3(1f, 0f, 0f);
+        vertex.texCoord0 = half2(h1, h0);
+        vertices[1] = vertex;
+
+        vertex.position = float3(0f, 0f, 1f);
+        vertex.texCoord0 = half2(h0, h1);
+        vertices[2] = vertex;
+
+        vertex.position = float3(1f, 0f, 1f);
+        vertex.texCoord0 = h1;
+        vertices[3] = vertex;
 
         //Setting Triangles
         meshData.SetIndexBufferParams(triangleIndexCount, IndexFormat.UInt16);
@@ -73,8 +90,14 @@ public class ProceduralMesh : MonoBehaviour
         triangleIndices[5] = 3;
 
         //Setting SubMesh
+        	var bounds = new Bounds(new Vector3(0.5f, 0.5f), new Vector3(1f, 1f));
+
         meshData.subMeshCount = 1;
-        meshData.SetSubMesh(0, new SubMeshDescriptor(0, triangleIndexCount));
+        meshData.SetSubMesh(0, new SubMeshDescriptor(0, triangleIndexCount)
+        {
+            bounds = bounds,
+            vertexCount = vertexCount
+        }, MeshUpdateFlags.DontRecalculateBounds);
 
         Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
         GetComponent<MeshFilter>().mesh = mesh;
